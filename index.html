@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ChatBoy Multi-Mode</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    #chat { border: 1px solid #ccc; padding: 10px; height: 400px; overflow-y: scroll; margin-bottom: 10px; }
+    .user { color: blue; margin: 5px 0; }
+    .bot { color: green; margin: 5px 0; }
+    .mode-btn { padding: 6px 12px; margin: 5px; cursor: pointer; border: none; border-radius: 6px; }
+    .active { background-color: #4CAF50; color: white; }
+  </style>
+</head>
+<body>
+  <h2>🤖 ChatBoy (Umum + Spesialis + Kreatif)</h2>
+  <div>
+    <button id="pertanianBtn" class="mode-btn active" onclick="setMode('pertanian')">🌱 Pertanian</button>
+    <button id="bisnisBtn" class="mode-btn" onclick="setMode('bisnis')">💼 Bisnis</button>
+  </div>
+  <div id="chat"></div>
+  <input type="text" id="input" placeholder="Tulis pertanyaanmu..." style="width:80%" />
+  <button onclick="sendMessage()">Kirim</button>
+
+  <script>
+    const chat = document.getElementById("chat");
+    const input = document.getElementById("input");
+    const API_URL = "https://api-inference.huggingface.co/models/deepseek-ai/deepseek-llm-7b-chat";
+    const HF_TOKEN = "hf_xxxxxxxx"; // 👉 ganti dengan Netlify secret
+
+    let currentMode = "pertanian";
+
+    const prompts = {
+      pertanian: "Kamu adalah ChatBoy Spesialis Pertanian. Jawablah secara mendalam tentang agribisnis, pupuk, dan teknik tanam.",
+      bisnis: "Kamu adalah ChatBoy Spesialis Bisnis. Jawablah secara mendalam tentang strategi bisnis, pemasaran, keuangan, dan manajemen.",
+      kreatif: "Kamu adalah ChatBoy Kreatif. Jawablah dengan imajinasi, gaya storyteller, ide segar, dan inspirasi out-of-the-box."
+    };
+
+    function setMode(mode) {
+      currentMode = mode;
+      document.getElementById("pertanianBtn").classList.remove("active");
+      document.getElementById("bisnisBtn").classList.remove("active");
+      document.getElementById(mode + "Btn").classList.add("active");
+      chat.innerHTML += `<div class="bot">⚙️ Mode spesialis diganti ke <b>${mode}</b></div>`;
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const userMsg = input.value;
+      if (!userMsg) return;
+      chat.innerHTML += `<div class="user">🧑: ${userMsg}</div>`;
+      input.value = "";
+
+      // Jawaban Umum
+      const generalPrompt = `Kamu adalah ChatBoy Umum. Jawablah pertanyaan berikut secara umum, singkat, dan netral.\n\nPertanyaan: ${userMsg}`;
+      const generalAnswer = await askLLM(generalPrompt);
+      chat.innerHTML += `<div class="bot">🤖 <b>Jawaban Umum:</b> ${generalAnswer}</div>`;
+
+      // Jawaban Spesialis
+      const specialistPrompt = `${prompts[currentMode]}\n\nPertanyaan: ${userMsg}`;
+      const specialistAnswer = await askLLM(specialistPrompt);
+      chat.innerHTML += `<div class="bot">🧠 <b>Jawaban Spesialis (${currentMode}):</b> ${specialistAnswer}</div>`;
+
+      // Jawaban Kreatif
+      const creativePrompt = `${prompts.kreatif}\n\nPertanyaan: ${userMsg}`;
+      const creativeAnswer = await askLLM(creativePrompt);
+      chat.innerHTML += `<div class="bot">✨ <b>Jawaban Kreatif:</b> ${creativeAnswer}</div>`;
+
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    async function askLLM(prompt) {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${HF_TOKEN}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ inputs: prompt })
+      });
+
+      const data = await response.json();
+      return data[0]?.generated_text || "⚠️ Error dari model";
+    }
+  </script>
+</body>
+</html>
